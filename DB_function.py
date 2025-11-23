@@ -1,7 +1,7 @@
 
 
 from datetime import datetime
-from database import session, Wallet, Student, Admin, Entity, Transaction
+from database_file import session, Wallet, Student, Admin, Entity, Transaction
 import random
 
 
