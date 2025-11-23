@@ -1,85 +1,79 @@
-from database_file import conn
-import sqlite3 as db
-import random
+
+
 from datetime import datetime
+from database import session, Wallet, Student, Admin, Entity, Transaction
+import random
+
 
 
 def generate_wallet_number():
-    wallet_digits = ''
-
+    wallet_digits = ""
     for _ in range(10):
-        r = str(random.randint(0, 9))
-        wallet_digits = wallet_digits + r
-
+        wallet_digits += str(random.randint(0, 9))
     return wallet_digits
 
 
 def generate_unique_wallet_number():
     while True:
         wallet_number = generate_wallet_number()
-        result = conn.execute("""
-                              SELECT WALLET_NUMBER
-                              FROM wallets
-                              WHERE WALLET_NUMBER = :wallet_number
-                              """, {"wallet_number": wallet_number}).fetchone()
-
-        if result is None:
+        exists = session.query(Wallet).filter_by(WALLET_NUMBER=wallet_number).first()
+        if exists is None:
             return wallet_number
 
 
+
 def create_student(student_id, first_name, last_name, email, phone, password):
-    existing_student = conn.execute("""
-                                    SELECT STUDENT_ID
-                                    FROM students
-                                    WHERE STUDENT_ID = :student_id
-                                    """, {"student_id": student_id}).fetchone()
+
+    existing_student = session.query(Student).filter_by(
+        STUDENT_ID=student_id
+    ).first()
 
     if existing_student is not None:
         print("Error: student already registered")
         return
 
     wallet_number = generate_unique_wallet_number()
-    created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    conn.execute("""
-                 INSERT INTO wallets (WALLET_NUMBER, WALLET_TYPE, BALANCE, CREATED_AT)
-                 VALUES (:wallet_number, 'student', 1000, :created_at)
-                 """, {"wallet_number": wallet_number, "created_at": created_at})
+    new_wallet = Wallet(
+        WALLET_NUMBER=wallet_number,
+        WALLET_TYPE="student",
+        BALANCE=1000,
+        CREATED_AT=datetime.now()
+    )
 
-    conn.execute("""
-                 INSERT INTO students (STUDENT_ID, FIRST_NAME, LAST_NAME, EMAIL, PHONE, PASSWORD, WALLET_NUMBER)
-                 VALUES (:student_id, :first_name, :last_name, :email, :phone, :password, :wallet_number)
-                 """, {
-                     "student_id": student_id,
-                     "first_name": first_name,
-                     "last_name": last_name,
-                     "email": email,
-                     "phone": phone,
-                     "password": password,
-                     "wallet_number": wallet_number
-                 })
+    new_student = Student(
+        STUDENT_ID=student_id,
+        FIRST_NAME=first_name,
+        LAST_NAME=last_name,
+        EMAIL=email,
+        PHONE=phone,
+        PASSWORD=password,
+        WALLET_NUMBER=wallet_number
+    )
+
+    session.add(new_wallet)
+    session.add(new_student)
+    session.commit()
 
     print("Student created successfully")
 
 
+
 def login(user_id, password):
-    student = conn.execute("""
-                           SELECT *
-                           FROM students
-                           WHERE STUDENT_ID = :user_id
-                             AND PASSWORD = :password
-                           """, {"user_id": user_id, "password": password}).fetchone()
+
+    student = session.query(Student).filter_by(
+        STUDENT_ID=user_id,
+        PASSWORD=password
+    ).first()
 
     if student is not None:
         print("Login as STUDENT")
         return "student"
 
-    admin = conn.execute("""
-                         SELECT *
-                         FROM admins
-                         WHERE ADMIN_ID = :user_id
-                           AND PASSWORD = :password
-                         """, {"user_id": user_id, "password": password}).fetchone()
+    admin = session.query(Admin).filter_by(
+        ADMIN_ID=user_id,
+        PASSWORD=password
+    ).first()
 
     if admin is not None:
         print("Login as ADMIN")
@@ -89,136 +83,113 @@ def login(user_id, password):
     return None
 
 
-def pay(from_wallet_number, to_wallet_number, amount):
-    source_wallet = conn.execute("""
-                                 SELECT BALANCE
-                                 FROM wallets
-                                 WHERE WALLET_NUMBER = :wallet_number
-                                 """, {"wallet_number": from_wallet_number}).fetchone()
 
-    if source_wallet is None:
+def pay(from_wallet_number, to_wallet_number, amount):
+
+    source = session.query(Wallet).filter_by(WALLET_NUMBER=from_wallet_number).first()
+    if  source is None:
         print("Source wallet does not exist")
         return
 
-    target_wallet = conn.execute("""
-                                 SELECT BALANCE
-                                 FROM wallets
-                                 WHERE WALLET_NUMBER = :wallet_number
-                                 """, {"wallet_number": to_wallet_number}).fetchone()
-
-    if target_wallet is None:
+    target = session.query(Wallet).filter_by(WALLET_NUMBER=to_wallet_number).first()
+    if  target is None:
         print("Target wallet does not exist")
         return
 
-    if source_wallet.BALANCE < amount:
+    if source.BALANCE < amount:
         print("Not enough balance")
         return
 
-    conn.execute("""
-                 UPDATE wallets
-                 SET BALANCE = :new_balance
-                 WHERE WALLET_NUMBER = :wallet_number
-                 """, {
-                     "new_balance": source_wallet.BALANCE - amount,
-                     "wallet_number": from_wallet_number
-                 })
+    source.BALANCE -= amount
+    target.BALANCE += amount
 
-    conn.execute("""
-                 UPDATE wallets
-                 SET BALANCE = :new_balance
-                 WHERE WALLET_NUMBER = :wallet_number
-                 """, {
-                     "new_balance": target_wallet.BALANCE + amount,
-                     "wallet_number": to_wallet_number
-                 })
-   created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S") 
+    trx = Transaction(
+        FROM_WALLET=from_wallet_number,
+        TO_WALLET=to_wallet_number,
+        AMOUNT=amount,
+        CREATED_AT=datetime.now()
+    )
 
-    conn.execute("""
-                 INSERT INTO transactions (FROM_WALLET, TO_WALLET, AMOUNT, CREATED_AT)
-                 VALUES (:from_wallet, :to_wallet, :amount, :created_at)
-                 """, {
-                     "from_wallet": from_wallet_number,
-                     "to_wallet": to_wallet_number,
-                     "amount": amount
-                     "created_at": created_at
-                 })
+    session.add(trx)
+    session.commit()
 
     print("Payment completed successfully")
 
 
-def add_entity(entity_name):
-    existing_entity = conn.execute("""
-                                   SELECT NAME
-                                   FROM entities
-                                   WHERE NAME = :entity_name
-                                   """, {"entity_name": entity_name}).fetchone()
 
-    if existing_entity is not None:
+def add_entity(entity_name):
+
+    existing = session.query(Entity).filter_by(NAME=entity_name).first()
+    if existing is not None:
         print("Entity already exists")
         return
 
     wallet_number = generate_unique_wallet_number()
-    created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    conn.execute("""
-                 INSERT INTO wallets (WALLET_NUMBER, WALLET_TYPE, BALANCE, CREATED_AT)
-                 VALUES (:wallet_number, 'ksu', 0, :created_at)
-                 """, {"wallet_number": wallet_number,"created_at":created_at})
+    new_wallet = Wallet(
+        WALLET_NUMBER=wallet_number,
+        WALLET_TYPE="ksu",
+        BALANCE=0,
+        CREATED_AT=datetime.now()
+    )
 
-    conn.execute("""
-                 INSERT INTO entities (NAME, WALLET_NUMBER)
-                 VALUES (:entity_name, :wallet_number)
-                 """, {"entity_name": entity_name, "wallet_number": wallet_number})
+    new_entity = Entity(
+        NAME=entity_name,
+        WALLET_NUMBER=wallet_number
+    )
+
+    session.add(new_wallet)
+    session.add(new_entity)
+    session.commit()
 
     print("Entity created successfully")
 
 
-def pay_stipends():
-    student_wallets = conn.execute("""
-                                   SELECT WALLET_NUMBER, BALANCE
-                                   FROM wallets
-                                   WHERE WALLET_TYPE = 'student'
-                                   """).fetchall()  # select all
-    created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    for wallet in student_wallets:
-        conn.execute("""
-                     UPDATE wallets
-                     SET BALANCE = :new_balance
-                     WHERE WALLET_NUMBER = :wallet_number
-                     """, {"new_balance": wallet.BALANCE + 1000,
-                           "wallet_number": wallet.WALLET_NUMBER})
 
-        conn.execute("""
-                     INSERT INTO transactions (FROM_WALLET, TO_WALLET, AMOUNT, CREATED_AT)
-                     VALUES (NULL, :wallet_number, 1000,:created_at)
-                     """, {"wallet_number": wallet.WALLET_NUMBER,"created_at": created_at})
+def pay_stipends():
+
+    student_wallets = session.query(Wallet).filter_by(WALLET_TYPE="student").all()
+
+    for wallet in student_wallets:
+        wallet.BALANCE += 1000
+
+        t = Transaction(
+            FROM_WALLET=None,
+            TO_WALLET=wallet.WALLET_NUMBER,
+            AMOUNT=1000,
+            CREATED_AT=datetime.now()
+        )
+        session.add(t)
+
+    session.commit()
 
     print("Stipends paid successfully")
 
 
+
 def cash_out():
-    ksu_wallets = conn.execute("""
-                               SELECT WALLET_NUMBER, BALANCE
-                               FROM wallets
-                               WHERE WALLET_TYPE = 'ksu'
-                               """).fetchall()
-   created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S") 
+
+    ksu_wallets = session.query(Wallet).filter_by(WALLET_TYPE="ksu").all()
+
     for wallet in ksu_wallets:
 
         if wallet.BALANCE > 0:
-            conn.execute("""
-                         INSERT INTO transactions (FROM_WALLET, TO_WALLET, AMOUNT, CREATED_AT)
-                         VALUES (:wallet_number, NULL, :amount, :created_at)
-                         """, {"wallet_number": wallet.WALLET_NUMBER,
-                               "amount": wallet.BALANCE,"created_at": created_at})
 
-        conn.execute("""
-                     UPDATE wallets
-                     SET BALANCE = 0
-                     WHERE WALLET_NUMBER = :wallet_number
-                     """, {"wallet_number": wallet.WALLET_NUMBER})
+            trx = Transaction(
+                FROM_WALLET=wallet.WALLET_NUMBER,
+                TO_WALLET=None,
+                AMOUNT=wallet.BALANCE,
+                CREATED_AT=datetime.now()
+            )
+
+            session.add(trx)
+
+        wallet.BALANCE = 0
+
+    session.commit()
 
     print("Cash out completed")
+
 
 
 
