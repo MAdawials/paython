@@ -2,9 +2,9 @@ import tkinter as tk
 import tkinter.messagebox as mb
 import re
 import random
-import time
-from database_file import conn
-
+from datetime import datetime
+from login_window import LoginWindow
+from database_file import session, Wallet, Student
 
 EMAIL_REGEX = r'^[A-Za-z0-9._%+-]+@student\.ksu\.edu\.sa$'
 PHONE_REGEX = r'^05\d{8}$'
@@ -44,7 +44,7 @@ class SignUpWindow:
         self.phone_entry.grid(row=5, column=1)
 
         self.submit_btn = tk.Button(self.bottom_frame, text="Submit", width=12, command=self.submit)
-        self.login_btn = tk.Button(self.bottom_frame, text="Login", width=12, command=self.open_login)
+        self.login_btn = tk.Button(self.bottom_frame, text="Login", width=12, command=self.open_login_window)
 
         self.submit_btn.grid(row=0, column=0, padx=10, pady=10)
         self.login_btn.grid(row=0, column=1, padx=10, pady=10)
@@ -55,20 +55,14 @@ class SignUpWindow:
         self.window.mainloop()
 
     def generate_wallet_number(self):
-        num = ""
-        for _ in range(10):
-            num += str(random.randint(0, 9))
-        return num
+        return "".join(str(random.randint(0, 9)) for _ in range(10))
 
     def generate_unique_wallet_number(self):
         while True:
-            wallet = self.generate_wallet_number()
-            cur = conn.execute(
-                "SELECT WALLET_NUMBER FROM wallets WHERE WALLET_NUMBER = ?",
-                (wallet,)
-            )
-            if cur.fetchone() is None:
-                return wallet
+            wallet_num = self.generate_wallet_number()
+            exists = session.query(Wallet).filter_by(WALLET_NUMBER=wallet_num).first()
+            if exists is None:
+                return wallet_num
 
     def submit(self):
         fn = self.fn_entry.get().strip()
@@ -78,29 +72,23 @@ class SignUpWindow:
         email = self.email_entry.get().strip()
         phone = self.phone_entry.get().strip()
 
-
         if fn == "":
             mb.showerror("Error", "First name cannot be empty.")
             return
-
         if " " in fn:
             mb.showerror("Error", "First name must be ONE word.")
             return
-
         for char in fn:
             if not ('a' <= char <= 'z' or 'A' <= char <= 'Z'):
                 mb.showerror("Error", "First name cannot contain numbers or symbols.")
                 return
 
-
         if ln == "":
             mb.showerror("Error", "Last name cannot be empty.")
             return
-
         if " " in ln:
             mb.showerror("Error", "Last name must be ONE word.")
             return
-
         for char in ln:
             if not ('a' <= char <= 'z' or 'A' <= char <= 'Z'):
                 mb.showerror("Error", "Last name cannot contain numbers or symbols.")
@@ -122,52 +110,51 @@ class SignUpWindow:
             mb.showerror("Error", "Phone must be: 05XXXXXXXX")
             return
 
-
-        cur = conn.execute(
-            "SELECT STUDENT_ID FROM students WHERE STUDENT_ID = ?",
-            (sid,)
-        )
-        if cur.fetchone() is not None:
+        existing = session.query(Student).filter_by(STUDENT_ID=sid).first()
+        if existing:
             mb.showerror("Error", "Student already registered.")
             return
 
-
         wallet_number = self.generate_unique_wallet_number()
-        created_at = time.strftime("%Y-%m-%d %H:%M:%S")
+        created_time = datetime.now().replace(microsecond=0)
 
-        conn.execute(
-            """
-            INSERT INTO wallets (WALLET_NUMBER, WALLET_TYPE, BALANCE, CREATED_AT)
-            VALUES (?, 'student', ?, ?)
-            """,
-            (wallet_number, 1000, created_at)
+
+        new_wallet = Wallet(
+            WALLET_NUMBER=wallet_number,
+            WALLET_TYPE="student",
+            BALANCE=1000,
+            CREATED_AT=created_time
         )
 
-        conn.execute(
-            """
-            INSERT INTO students (STUDENT_ID, FIRST_NAME, LAST_NAME, EMAIL, PHONE, PASSWORD, WALLET_NUMBER)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-            (sid, fn, ln, email, phone, pw, wallet_number)
+        new_student = Student(
+            STUDENT_ID=sid,
+            FIRST_NAME=fn,
+            LAST_NAME=ln,
+            EMAIL=email,
+            PHONE=phone,
+            PASSWORD=pw,
+            WALLET_NUMBER=wallet_number
         )
 
-        conn.commit()
+        session.add(new_wallet)
+        session.add(new_student)
+        session.commit()
 
         mb.showinfo(
             "Success",
             f"Student registered successfully!\n\n"
             f"Wallet Number: {wallet_number}\n"
-            f"Created At: {created_at}\n"
+            f"Created At: {created_time}\n"
             f"Type: student\n"
             f"Initial Balance: 1000 SR"
         )
 
-        self.window.destroy()
-        self.open_login()
 
-    def open_login(self):
-        mb.showinfo("Info", "Login window not implemented yet.")
+    def open_login_window(self):
+        self.window.destroy()
+        LoginWindow()
 
 
 if __name__ == "__main__":
     SignUpWindow()
+
