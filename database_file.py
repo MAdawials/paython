@@ -1,57 +1,73 @@
-import sqlite3 as db
 
-conn = db.connect('ksuwallet.db')
+from sqlalchemy import create_engine, Column, String, Integer, DateTime, ForeignKey
+from sqlalchemy.orm import sessionmaker, declarative_base
+from datetime import datetime
+import random
 
-conn.execute("""
-CREATE TABLE IF NOT EXISTS wallets (
-    WALLET_NUMBER TEXT PRIMARY KEY,
-    WALLET_TYPE TEXT NOT NULL,    
-    BALANCE INTEGER NOT NULL,
-    CREATED_AT TEXT NOT NULL
-);
-""")
+DATABASE_PATH = "sqlite:///ksuwallet.db"
 
+engine = create_engine(DATABASE_PATH, echo=False)
+Session = sessionmaker(bind=engine)
+session = Session()
 
-conn.execute("""
-CREATE TABLE IF NOT EXISTS students (
-    STUDENT_ID TEXT PRIMARY KEY,
-    FIRST_NAME TEXT NOT NULL,
-    LAST_NAME TEXT NOT NULL,
-    EMAIL TEXT NOT NULL,
-    PHONE TEXT NOT NULL,
-    PASSWORD TEXT NOT NULL,
-    WALLET_NUMBER TEXT,
-    FOREIGN KEY (WALLET_NUMBER) REFERENCES wallets(WALLET_NUMBER)
-);
-""")
-
-conn.execute("""
-CREATE TABLE IF NOT EXISTS admins (
-    ADMIN_ID TEXT PRIMARY KEY,
-    NAME TEXT NOT NULL,
-    PASSWORD TEXT NOT NULL
-);
-""")
+Base = declarative_base()
 
 
-conn.execute("""
-CREATE TABLE IF NOT EXISTS entities (
-    ENTITY_ID INTEGER PRIMARY KEY AUTOINCREMENT,
-    NAME TEXT UNIQUE NOT NULL,
-    WALLET_NUMBER TEXT,
-    FOREIGN KEY (WALLET_NUMBER) REFERENCES wallets(WALLET_NUMBER)
-);
-""")
-conn.execute("""
-CREATE TABLE IF NOT EXISTS transactions (
-    TRANS_ID INTEGER PRIMARY KEY AUTOINCREMENT,
-    FROM_WALLET TEXT,
-    TO_WALLET TEXT,
-    AMOUNT INTEGER NOT NULL,
-    CREATED_AT TEXT NOT NULL,
-    FOREIGN KEY (FROM_WALLET) REFERENCES wallets(WALLET_NUMBER),
-    FOREIGN KEY (TO_WALLET) REFERENCES wallets(WALLET_NUMBER)
-);
-""")
+
+class Wallet(Base):
+    __tablename__ = "wallets"
+
+    WALLET_NUMBER = Column(String, primary_key=True)
+    WALLET_TYPE = Column(String, nullable=False)
+    BALANCE = Column(Integer, nullable=False)
+    CREATED_AT = Column(DateTime, default=datetime.now)
+
+
+
+class Student(Base):
+    __tablename__ = "students"
+
+    STUDENT_ID = Column(String, primary_key=True)
+    FIRST_NAME = Column(String, nullable=False)
+    LAST_NAME = Column(String, nullable=False)
+    EMAIL = Column(String, nullable=False)
+    PHONE = Column(String, nullable=False)
+    PASSWORD = Column(String, nullable=False)
+
+    WALLET_NUMBER = Column(String, ForeignKey("wallets.WALLET_NUMBER"))
+
+
+
+class Admin(Base):
+    __tablename__ = "admins"
+
+    ADMIN_ID = Column(String, primary_key=True)
+    NAME = Column(String, nullable=False)
+    PASSWORD = Column(String, nullable=False)
+
+
+
+class Entity(Base):
+    __tablename__ = "entities"
+
+    ENTITY_ID = Column(Integer, primary_key=True, autoincrement=True)
+    NAME = Column(String, unique=True, nullable=False)
+    WALLET_NUMBER = Column(String, ForeignKey("wallets.WALLET_NUMBER"))
+
+
+
+class Transaction(Base):
+    __tablename__ = "transactions"
+
+    TRANS_ID = Column(Integer, primary_key=True, autoincrement=True)
+    FROM_WALLET = Column(String, ForeignKey("wallets.WALLET_NUMBER"))
+    TO_WALLET = Column(String, ForeignKey("wallets.WALLET_NUMBER"))
+    AMOUNT = Column(Integer, nullable=False)
+    CREATED_AT = Column(DateTime, default=datetime.now)
+
+
+
+Base.metadata.create_all(engine)
+
 
 
