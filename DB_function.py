@@ -205,9 +205,9 @@ def wallet_exists(wallet_number):
     exists = session.query(Wallet).filter_by(WALLET_NUMBER=wallet_number).first()
     return exists is not None
 
- def get_balance(wallet_number):
+
+def get_balance(wallet_number):
     wallet = session.query(Wallet).filter_by(WALLET_NUMBER=wallet_number).first()
     if wallet:
         return wallet.BALANCE
     return None
-
