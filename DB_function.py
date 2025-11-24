@@ -190,6 +190,24 @@ def cash_out():
 
     print("Cash out completed")
 
+def get_student_wallet(student_id):
+    student = session.query(Student).filter_by(STUDENT_ID=student_id).first()
+    if not student:
+        return None
 
+    wallet = session.query(Wallet).filter_by(WALLET_NUMBER=student.WALLET_NUMBER).first()
+    if not wallet:
+        return None
 
+    return wallet.WALLET_NUMBER, wallet.BALANCE
+
+def wallet_exists(wallet_number):
+    exists = session.query(Wallet).filter_by(WALLET_NUMBER=wallet_number).first()
+    return exists is not None
+
+ def get_balance(wallet_number):
+    wallet = session.query(Wallet).filter_by(WALLET_NUMBER=wallet_number).first()
+    if wallet:
+        return wallet.BALANCE
+    return None
 
