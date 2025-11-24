@@ -1,7 +1,7 @@
 import tkinter as tk
 import tkinter.messagebox as mb
 
-from database_file import (
+from DB_function import (
     session,
     Wallet,
     Student,
