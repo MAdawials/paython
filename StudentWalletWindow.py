@@ -136,5 +136,7 @@ class StudentWalletWindow:
     # ============================
     def go_back(self):
         self.window.destroy()
-        mb.showinfo("Info", "Back to previous window.")
+        from login_window import LoginWindow
+        LoginWindow()
+
 
