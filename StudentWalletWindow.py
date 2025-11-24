@@ -1,9 +1,15 @@
 import tkinter as tk
 import tkinter.messagebox as mb
 
-
-from database_file import conn
-from database_file import get_student_wallet, wallet_exists, get_balance, pay
+from database_file import (
+    session,
+    Wallet,
+    Student,
+    get_student_wallet,
+    wallet_exists,
+    get_balance,
+    pay
+)
 
 
 class StudentWalletWindow:
@@ -15,7 +21,8 @@ class StudentWalletWindow:
         self.window.geometry("420x350")
 
         # ============================
-
+        #   Load Wallet Data
+        # ============================
         try:
             data = get_student_wallet(student_id)
         except Exception as e:
@@ -34,7 +41,7 @@ class StudentWalletWindow:
         # ========== HEADER ==========
         tk.Label(self.window, text="Student Wallet", font=("Arial", 16, "bold")).pack(pady=10)
 
-        # ========== WALLET INFO DISPLAY ==========
+        # ========== WALLET INFO ==========
         info = tk.Frame(self.window)
         info.pack()
 
@@ -42,7 +49,7 @@ class StudentWalletWindow:
         self.balance_label = tk.Label(info, text=f"Current Balance: {self.balance} SR", font=("Arial", 12))
         self.balance_label.grid(row=1, column=0, sticky="w")
 
-        # ========== INPUTS ==========
+        # ========== INPUT FIELDS ==========
         input_frame = tk.Frame(self.window)
         input_frame.pack(pady=20)
 
@@ -70,6 +77,7 @@ class StudentWalletWindow:
         target = self.target_entry.get().strip()
         amount_str = self.amount_entry.get().strip()
 
+        # Validate input
         if not target.isdigit() or len(target) != 10:
             mb.showerror("Error", "Target wallet must be 10 digits.")
             return
@@ -87,37 +95,34 @@ class StudentWalletWindow:
             mb.showerror("Error", "Amount must be greater than 0.")
             return
 
-        # ============================
-
+        # Check wallet exists
         try:
             if not wallet_exists(target):
                 mb.showerror("Error", "Target wallet does not exist.")
                 return
         except:
-            mb.showerror("Error", "wallet_exists() function missing in database_file.")
+            mb.showerror("Error", "wallet_exists() missing in db_folder.")
             return
 
-        # ============================
-
+        # Check balance
         try:
             current_balance = get_balance(self.wallet_number)
         except:
-            mb.showerror("Error", "get_balance() function missing in database_file.")
+            mb.showerror("Error", "get_balance() missing in db_folder.")
             return
 
         if current_balance < amount:
             mb.showerror("Error", "There is not enough money.")
             return
 
-        # ============================
-
+        # Pay
         try:
             success = pay(self.wallet_number, target, amount)
-        except:
-            mb.showerror("Error", "pay() function missing or incomplete.")
+        except Exception as e:
+            mb.showerror("Error", f"pay() error:\n{e}")
             return
 
-        if success:
+        if success is None:
             mb.showinfo("Success", f"Transferred {amount} SR to {target}")
 
             new_balance = get_balance(self.wallet_number)
@@ -134,4 +139,3 @@ class StudentWalletWindow:
     def go_back(self):
         self.window.destroy()
         mb.showinfo("Info", "Back to previous window.")
-
