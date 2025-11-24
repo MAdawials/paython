@@ -12,6 +12,8 @@ from database_file import (
 )
 
 
+
+
 class StudentWalletWindow:
     def __init__(self, student_id):
         self.student_id = student_id
@@ -117,12 +119,7 @@ class StudentWalletWindow:
 
         # Pay
         try:
-            success = pay(self.wallet_number, target, amount)
-        except Exception as e:
-            mb.showerror("Error", f"pay() error:\n{e}")
-            return
-
-        if success is None:
+            pay(self.wallet_number, target, amount)
             mb.showinfo("Success", f"Transferred {amount} SR to {target}")
 
             new_balance = get_balance(self.wallet_number)
@@ -130,8 +127,9 @@ class StudentWalletWindow:
 
             self.target_entry.delete(0, tk.END)
             self.amount_entry.delete(0, tk.END)
-        else:
-            mb.showerror("Error", "Payment failed.")
+
+        except Exception as e:
+            mb.showerror("Error", f"Payment failed:\n{e}")
 
     # ============================
     #            BACK
