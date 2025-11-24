@@ -14,12 +14,10 @@ class LoginWindow:
         main_frame = tk.Frame(self.window)
         main_frame.pack(pady=30)
 
-        # --------- ID ----------
         tk.Label(main_frame, text="User ID:").grid(row=0, column=0, sticky="e", padx=5, pady=5)
         self.id_entry = tk.Entry(main_frame, width=25)
         self.id_entry.grid(row=0, column=1, pady=5)
 
-        # --------- Password ----------
         tk.Label(main_frame, text="Password:").grid(row=1, column=0, sticky="e", padx=5, pady=5)
         self.pw_entry = tk.Entry(main_frame, width=25, show="*")
         self.pw_entry.grid(row=1, column=1, pady=5)
@@ -39,13 +37,23 @@ class LoginWindow:
         user_id = self.id_entry.get().strip()
         password = self.pw_entry.get().strip()
 
+
         if user_id == "":
             mb.showerror("Error", "User ID cannot be empty.")
+            return
+
+        if not user_id.isdigit():
+            mb.showerror("Error", "User ID must contain digits only.")
+            return
+
+        if len(user_id) != 10:
+            mb.showerror("Error", "User ID must be 10 digits.")
             return
 
         if password == "":
             mb.showerror("Error", "Password cannot be empty.")
             return
+
 
         role = db_login(user_id, password)
 
@@ -53,17 +61,19 @@ class LoginWindow:
             mb.showerror("Error", "Invalid ID or password.")
             return
 
+
         if role == "student":
             mb.showinfo("Success", "Login successful as STUDENT.")
-
             self.window.destroy()
             StudentWalletWindow(user_id)
+            return
 
-        elif role == "admin":
+
+        if role == "admin":
             mb.showinfo("Success", "Login successful as ADMIN.")
+            return
 
-        else:
-            mb.showwarning("Warning", f"Unknown role: {role}")
+        mb.showwarning("Warning", f"Unknown role: {role}")
 
     def open_signup(self):
         self.window.destroy()
