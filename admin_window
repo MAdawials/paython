@@ -1,0 +1,126 @@
+import tkinter as tk
+from tkinter import ttk, messagebox
+
+from DB_function import (get_entities,get_entity_balance, add_entity,
+    pay_stipends,cash_out,)
+
+class AdminWindow:
+    def __init__(self):
+        self.window = tk.Tk()
+        self.window.title("Admin")
+        self.window.geometry("600x420")
+
+        self.build_ui()
+        self.load_entities()
+        self.window.mainloop()
+
+
+    def build_ui(self):
+        notebook = ttk.Notebook(self.window)
+        notebook.pack(fill="both", expand=True, padx=10, pady=10)
+
+
+        view_frame = ttk.Frame(notebook)
+        notebook.add(view_frame, text="View")
+
+        self.entity_list = tk.Listbox(view_frame, height=12)
+        self.entity_list.pack(fill="x", padx=10, pady=10)
+
+        btn_frame = tk.Frame(view_frame)
+        btn_frame.pack()
+
+        tk.Button(btn_frame, text="View Balance",
+                  width=15, command=self.view_balance).grid(row=0, column=0, padx=5)
+
+        add_frame = ttk.Frame(notebook)
+        notebook.add(add_frame, text="Add")
+
+        tk.Label(add_frame, text="Entity Name:").pack(pady=10)
+        self.entity_entry = tk.Entry(add_frame, width=35)
+        self.entity_entry.pack(pady=5)
+
+        tk.Button(add_frame, text="Submit", width=15,command=self.add_new_entity).pack(pady=10)
+
+
+        manage_frame = ttk.Frame(notebook)
+        notebook.add(manage_frame, text="Manage")
+
+        tk.Button(manage_frame, text="Pay Stipends (1000 SR)",width=25, command=self.pay_stipends_action).pack(pady=20)
+
+        tk.Button(manage_frame, text="Cash Out KSU Entities",
+                  width=25, command=self.cash_out_action).pack(pady=10)
+
+
+        tk.Button(self.window, text="Back", width=12,
+                  command=self.go_back).pack(pady=10)
+
+
+    def load_entities(self):
+        self.entity_list.delete(0, tk.END)
+        entities = get_entities()
+
+        for ent in entities:
+            ent_id, name = ent
+            self.entity_list.insert(tk.END, f"{ent_id} - {name}")
+
+    def view_balance(self):
+        sel = self.entity_list.curselection()
+        if not sel:
+            messagebox.showwarning("Select", "Please select an entity.")
+            return
+
+        selected = self.entity_list.get(sel[0])
+        ent_id = int(selected.split("-")[0].strip())
+
+        balance = get_entity_balance(ent_id)
+        if balance is None:
+            messagebox.showerror("Error", "Entity not found in DB.")
+            return
+
+        messagebox.showinfo("Balance", f"Entity ID {ent_id}\nBalance: {balance} SR")
+
+    def add_new_entity(self):
+        name = self.entity_entry.get().strip()
+
+        if name == "":
+            messagebox.showwarning("Input", "Please enter entity name.")
+            return
+
+        success, msg = add_entity(name)
+
+        if success:
+            messagebox.showinfo("Success", msg)
+            self.entity_entry.delete(0, tk.END)
+            self.load_entities()
+        else:
+            messagebox.showerror("Error", msg)
+
+    def pay_stipends_action(self):
+        ok = pay_stipends()
+        if ok:
+            messagebox.showinfo("Done", "1000 SR deposited to all student wallets.")
+        else:
+            messagebox.showerror("Error", "Cannot complete the operation.")
+
+    def cash_out_action(self):
+        confirm = messagebox.askyesno("Confirm",
+                                      "Are you sure you want to set all KSU entity balances to 0?")
+        if not confirm:
+            return
+
+        ok = cash_out()
+        if ok:
+            messagebox.showinfo("Done", "All KSU entity balances set to 0.")
+            self.load_entities()
+        else:
+            messagebox.showerror("Error", "Cash out failed.")
+
+    def go_back(self):
+        self.window.destroy()
+        from signup_window import SignUpWindow
+        SignUpWindow()
+
+
+if __name__ == "__main__":
+    AdminWindow()
+
