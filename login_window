@@ -71,6 +71,9 @@ class LoginWindow:
 
         if role == "admin":
             mb.showinfo("Success", "Login successful as ADMIN.")
+            self.window.destroy()
+            from admin_window import AdminWindow
+            AdminWindow()
             return
 
         mb.showwarning("Warning", f"Unknown role: {role}")
