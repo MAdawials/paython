@@ -115,14 +115,27 @@ def pay(from_wallet_number, to_wallet_number, amount):
 
     print("Payment completed successfully")
 
+def get_entities():
+    entities=session.query(Entity).all()
+    return [(ent.ENTITY_ID, ent.NAME) for ent in entities]
 
+
+
+def get_entity_balance(entity_id):
+    entity=session.query(Entity).filter_by(ENTITY_ID=entity_id).first()
+    if not entity:
+        return None
+    wallet =session.query(Wallet).filter_by(WALLET_NUMBER=entity.WALLET_NUMBER).first()
+    if wallet :
+        return wallet.BALANCE
+    return None
 
 def add_entity(entity_name):
 
     existing = session.query(Entity).filter_by(NAME=entity_name).first()
     if existing is not None:
-        print("Entity already exists")
-        return
+        return False ,"Entity already exists"
+
 
     wallet_number = generate_unique_wallet_number()
 
@@ -142,53 +155,58 @@ def add_entity(entity_name):
     session.add(new_entity)
     session.commit()
 
-    print("Entity created successfully")
+    return True ,"Entity created successfully"
 
 
 
 def pay_stipends():
+    try :
+        student_wallets = session.query(Wallet).filter_by(WALLET_TYPE="student").all()
 
-    student_wallets = session.query(Wallet).filter_by(WALLET_TYPE="student").all()
+        for wallet in student_wallets:
+            wallet.BALANCE += 1000
 
-    for wallet in student_wallets:
-        wallet.BALANCE += 1000
+            t = Transaction(
+                FROM_WALLET=None,
+                TO_WALLET=wallet.WALLET_NUMBER,
+                AMOUNT=1000,
+                CREATED_AT=datetime.now()
+            )
+            session.add(t)
 
-        t = Transaction(
-            FROM_WALLET=None,
-            TO_WALLET=wallet.WALLET_NUMBER,
-            AMOUNT=1000,
-            CREATED_AT=datetime.now()
-        )
-        session.add(t)
+        session.commit()
+        return True
+    except:
+        return False
 
-    session.commit()
 
-    print("Stipends paid successfully")
 
 
 
 def cash_out():
 
-    ksu_wallets = session.query(Wallet).filter_by(WALLET_TYPE="ksu").all()
+   try:
+       ksu_wallets = session.query(Wallet).filter_by(WALLET_TYPE="ksu").all()
 
-    for wallet in ksu_wallets:
+       for wallet in ksu_wallets:
 
-        if wallet.BALANCE > 0:
+           if wallet.BALANCE > 0:
+               trx = Transaction(
+                   FROM_WALLET=wallet.WALLET_NUMBER,
+                   TO_WALLET=None,
+                   AMOUNT=wallet.BALANCE,
+                   CREATED_AT=datetime.now()
+               )
 
-            trx = Transaction(
-                FROM_WALLET=wallet.WALLET_NUMBER,
-                TO_WALLET=None,
-                AMOUNT=wallet.BALANCE,
-                CREATED_AT=datetime.now()
-            )
+               session.add(trx)
 
-            session.add(trx)
+           wallet.BALANCE = 0
 
-        wallet.BALANCE = 0
+       session.commit()
+       return True
+   except:
+       return False
 
-    session.commit()
-
-    print("Cash out completed")
 
 def get_student_wallet(student_id):
     student = session.query(Student).filter_by(STUDENT_ID=student_id).first()
