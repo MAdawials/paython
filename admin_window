@@ -64,12 +64,12 @@ class AdminWindow:
             self.entity_list.insert(tk.END, f"{ent_id} - {name}")
 
     def view_balance(self):
-        sel = self.entity_list.curselection()
-        if not sel:
+        select = self.entity_list.curselection()
+        if not select:
             messagebox.showwarning("Select", "Please select an entity.")
             return
 
-        selected = self.entity_list.get(sel[0])
+        selected = self.entity_list.get(select[0])
         ent_id = int(selected.split("-")[0].strip())
 
         balance = get_entity_balance(ent_id)
@@ -96,8 +96,8 @@ class AdminWindow:
             messagebox.showerror("Error", msg)
 
     def pay_stipends_action(self):
-        ok = pay_stipends()
-        if ok:
+        pay = pay_stipends()
+        if pay:
             messagebox.showinfo("Done", "1000 SR deposited to all student wallets.")
         else:
             messagebox.showerror("Error", "cannot complete the operation.")
@@ -108,8 +108,8 @@ class AdminWindow:
         if not confirm:
             return
 
-        ok = cash_out()
-        if ok:
+        cashOut = cash_out()
+        if cashOut:
             messagebox.showinfo("Done", "All KSU entity balances set to 0.")
             self.load_entities()
         else:
