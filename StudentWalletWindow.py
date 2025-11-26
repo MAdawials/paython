@@ -122,7 +122,8 @@ class StudentWalletWindow:
 
     def go_back(self):
         self.window.destroy()
-        from login_window import LoginWindow
-        LoginWindow()
+        from signup_window import SignUpWindow
+        SignUpWindow()
+
 
 
