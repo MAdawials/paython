@@ -69,5 +69,18 @@ class Transaction(Base):
 
 Base.metadata.create_all(engine)
 
+default_admin = session.query(Admin).first()
+
+if default_admin is None:
+    admin = Admin(
+        ADMIN_ID="1233211233",
+        NAME="Main Admin",
+        PASSWORD="Admin123"
+    )
+    session.add(admin)
+    session.commit()
+    print("Default admin created.")
+else:
+    print("Admin already exists.")
 
 
