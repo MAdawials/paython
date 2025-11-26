@@ -89,7 +89,13 @@ class AdminWindow:
         success, msg = add_entity(name)
 
         if success:
-            messagebox.showinfo("Success", msg)
+            messagebox.showinfo("Success", f"Entity added successfully!\n\n"
+                                f"Name:{msg['name']}\n"
+                                f"Wallet number:{msg['wallet']}\n"
+                                f"Type :{msg['type']}\n"
+                                f"Created  at :{msg['created']}\n"
+                                f"Initial Balance :{msg['balance']}SR"
+                                )
             self.entity_entry.delete(0, tk.END)
             self.load_entities()
         else:
