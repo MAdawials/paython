@@ -7,7 +7,7 @@ from DB_function import (get_entities,get_entity_balance, add_entity,
 class AdminWindow:
     def __init__(self):
         self.window = tk.Tk()
-        self.window.title("Admin")
+        self.window.title("KSUWallet- Admin")
         self.window.geometry("600x420")
 
         self.build_ui()
