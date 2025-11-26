@@ -138,12 +138,12 @@ def add_entity(entity_name):
 
 
     wallet_number = generate_unique_wallet_number()
-
+    time=datetime.now().replace(microsecond=0)
     new_wallet = Wallet(
         WALLET_NUMBER=wallet_number,
         WALLET_TYPE="ksu",
         BALANCE=0,
-        CREATED_AT=datetime.now()
+        CREATED_AT=time
     )
 
     new_entity = Entity(
@@ -155,7 +155,12 @@ def add_entity(entity_name):
     session.add(new_entity)
     session.commit()
 
-    return True ,"Entity created successfully"
+    return True ,{"name": entity_name,
+    "wallet":  wallet_number,
+    "type":"KSU",
+    "created": time,
+    "balance": 0
+    }
 
 
 
@@ -229,3 +234,4 @@ def get_balance(wallet_number):
     if wallet:
         return wallet.BALANCE
     return None
+
